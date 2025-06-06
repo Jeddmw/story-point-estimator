@@ -19,6 +19,12 @@
       padding: 10px 15px;
       font-size: 16px;
     }
+    button.selected {
+      background-color: #4caf50;
+      color: white;
+      font-weight: bold;
+      border: 2px solid #2e7d32;
+    }
     .result {
       font-size: 20px;
       font-weight: bold;
@@ -139,13 +145,24 @@
     }
 
     function submitVote(value) {
-      if (!userName) {
-        alert("Please enter your name first.");
-        return;
+  if (!userName) {
+    alert("Please enter your name first.");
+    return;
+  }
+
+  // Highlight the selected button
+  const allButtons = document.querySelectorAll(".button-group button");
+    allButtons.forEach(btn => {
+      btn.classList.remove("selected");
+      if (parseInt(btn.textContent) === value) {
+        btn.classList.add("selected");
       }
-      firebase.database().ref("votes/" + userName).set(value);
-      firebase.database().ref("users/" + userName).set({ voted: true });
-    }
+    });
+
+    // Save vote to Firebase
+    firebase.database().ref("votes/" + userName).set(value);
+    firebase.database().ref("users/" + userName).set({ voted: true });
+  }
 
     function estimate() {
       firebase.database().ref("votes").once("value", snapshot => {
