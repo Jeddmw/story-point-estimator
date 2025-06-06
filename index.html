@@ -193,10 +193,10 @@
     function showHostBadge() {
       const badge = document.getElementById("hostBadge");
       if (isHost()) {
-        badge.textContent = `👑 ${userName} is the host`;
+        badge.textContent = `${userName} is the host`;
         document.getElementById("hostControls").style.display = "block";
       } else {
-        badge.textContent = "";
+        badge.textContent = `You are logged in as: ${userName}`;
       }
     }
 
