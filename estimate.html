@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Team Estimator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 30px;
+    }
+    input, button {
+      font-size: 16px;
+      padding: 8px;
+      margin: 5px;
+    }
+    .button-group button {
+      margin: 4px;
+      padding: 10px 15px;
+      font-size: 16px;
+    }
+    .result {
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 30px;
+    }
+    .host-controls {
+      margin-top: 20px;
+      display: none;
+    }
+    .user-list {
+      margin-top: 30px;
+      font-size: 16px;
+      text-align: left;
+      display: inline-block;
+    }
+    .user-list ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    .user-list li {
+      padding: 4px 0;
+    }
+    #hostBadge {
+      margin-top: 8px;
+      font-weight: bold;
+      color: darkgreen;
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <h1>Team Estimator</h1>
+
+  <div>
+    <input type="text" id="username" placeholder="Enter your name" />
+    <div id="hostBadge"></div>
+  </div>
+
+  <div class="button-group">
+    <button onclick="submitVote(1)">1</button>
+    <button onclick="submitVote(2)">2</button>
+    <button onclick="submitVote(4)">4</button>
+    <button onclick="submitVote(8)">8</button>
+    <button onclick="submitVote(16)">16</button>
+    <button onclick="submitVote(32)">32</button>
+    <button onclick="submitVote(64)">64</button>
+    <button onclick="submitVote(128)">128</button>
+  </div>
+
+  <div class="result" id="resultDisplay"></div>
+
+  <div class="host-controls" id="hostControls">
+    <button onclick="estimate()">Estimate</button>
+    <button onclick="reset()">Reset</button>
+  </div>
+
+  <div class="user-list">
+    <h3>Users in Room</h3>
+    <ul id="userList"></ul>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyC34kR1KqtpFh13pqyVJMUVDbPnkYh27lw",
+        authDomain: "team-estimator.firebaseapp.com",
+        projectId: "team-estimator",
+        storageBucket: "team-estimator.firebasestorage.app",
+        messagingSenderId: "371255139544",
+        appId: "1:371255139544:web:54280b68296ae341288bad",
+        measurementId: "G-6W7STHM4NG"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const usernameInput = document.getElementById("username");
+
+    usernameInput.addEventListener("change", () => {
+        const name = usernameInput.value.trim();
+        if (name) {
+            const userRef = firebase.database().ref("users/" + name);
+            userRef.set({ voted: false });
+            userRef.onDisconnect().remove(); // removes user when page closes
+        }
+    });
+
+    function submitVote(value) {
+      const name = usernameInput.value.trim();
+      if (!name) {
+        alert("Please enter your name.");
+        return;
+      }
+      firebase.database().ref("votes/" + name).set(value);
+      firebase.database().ref("users/" + name).set({ voted: true });
+    }
+
+    function estimate() {
+      firebase.database().ref("votes").once("value", snapshot => {
+        const data = snapshot.val();
+        if (!data) {
+          document.getElementById("resultDisplay").textContent = "No votes to estimate.";
+          return;
+        }
+        const values = Object.values(data);
+        const sum = values.reduce((a, b) => a + b, 0);
+        const avg = sum / values.length;
+        document.getElementById("resultDisplay").textContent =
+          `Average Estimate: ${avg.toFixed(2)} (from ${values.length} votes)`;
+      });
+    }
+
+    function reset() {
+      firebase.database().ref("votes").remove();
+      document.getElementById("resultDisplay").textContent = "";
+      document.getElementById("username").value = "";
+
+      firebase.database().ref("users").once("value", snapshot => {
+        const updates = {};
+        snapshot.forEach(child => {
+          updates[child.key + "/voted"] = false;
+        });
+        firebase.database().ref("users").update(updates);
+      });
+    }
+
+    function renderUserList(users) {
+      const userListEl = document.getElementById("userList");
+      userListEl.innerHTML = "";
+      for (const [name, data] of Object.entries(users)) {
+        const li = document.createElement("li");
+        const status = data.voted ? "✅" : "";
+        li.textContent = `${name} ${status}`;
+        userListEl.appendChild(li);
+      }
+    }
+
+    function isHost() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("host") === "true";
+    }
+
+    function showHostBadge() {
+      const badge = document.getElementById("hostBadge");
+      if (isHost()) {
+        badge.textContent = "👑 You are the host";
+      } else {
+        badge.textContent = "You have joined the room";
+      }
+    }
+
+    // Initialize
+    window.addEventListener("DOMContentLoaded", () => {
+      if (isHost()) {
+        document.getElementById("hostControls").style.display = "block";
+      }
+      showHostBadge();
+    });
+
+    firebase.database().ref("users").on("value", snapshot => {
+      const users = snapshot.val() || {};
+      renderUserList(users);
+    });
+  </script>
+</body>
+</html>
