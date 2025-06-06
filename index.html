@@ -182,6 +182,12 @@
     function reset() {
       firebase.database().ref("votes").remove();
       document.getElementById("resultDisplay").textContent = "";
+
+      // Unhighlight all vote buttons
+      const allButtons = document.querySelectorAll(".button-group button");
+      allButtons.forEach(btn => btn.classList.remove("selected"));
+
+      // Reset "voted" status in Firebase
       firebase.database().ref("users").once("value", snapshot => {
         const updates = {};
         snapshot.forEach(child => {
