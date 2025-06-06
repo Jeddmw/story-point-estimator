@@ -46,17 +46,42 @@
       font-weight: bold;
       color: darkgreen;
     }
+    /* Modal styles */
+    #nameModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #nameModalContent {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      text-align: center;
+      width: 300px;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
-  <h1>Team Estimator</h1>
-
-  <div>
-    <input type="text" id="username" placeholder="Enter your name" />
-    <div id="hostBadge"></div>
+  <div id="nameModal">
+    <div id="nameModalContent">
+      <h2>Enter Your Name</h2>
+      <input type="text" id="usernameInput" placeholder="Your name" />
+      <br />
+      <button onclick="submitName()">Enter</button>
+    </div>
   </div>
+
+  <h1>Team Estimator</h1>
+  <div id="hostBadge"></div>
 
   <div class="button-group">
     <button onclick="submitVote(1)">1</button>
@@ -95,25 +120,32 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const usernameInput = document.getElementById("username");
+    let userName = "";
 
-    usernameInput.addEventListener("change", () => {
-        const name = usernameInput.value.trim();
-        if (name) {
-            const userRef = firebase.database().ref("users/" + name);
-            userRef.set({ voted: false });
-            userRef.onDisconnect().remove(); // removes user when page closes
-        }
-    });
-
-    function submitVote(value) {
-      const name = usernameInput.value.trim();
+    function submitName() {
+      const input = document.getElementById("usernameInput");
+      const name = input.value.trim();
       if (!name) {
         alert("Please enter your name.");
         return;
       }
-      firebase.database().ref("votes/" + name).set(value);
-      firebase.database().ref("users/" + name).set({ voted: true });
+
+      userName = name;
+      const userRef = firebase.database().ref("users/" + name);
+      userRef.set({ voted: false });
+      userRef.onDisconnect().remove();
+
+      document.getElementById("nameModal").style.display = "none";
+      showHostBadge();
+    }
+
+    function submitVote(value) {
+      if (!userName) {
+        alert("Please enter your name first.");
+        return;
+      }
+      firebase.database().ref("votes/" + userName).set(value);
+      firebase.database().ref("users/" + userName).set({ voted: true });
     }
 
     function estimate() {
@@ -134,8 +166,6 @@
     function reset() {
       firebase.database().ref("votes").remove();
       document.getElementById("resultDisplay").textContent = "";
-      document.getElementById("username").value = "";
-
       firebase.database().ref("users").once("value", snapshot => {
         const updates = {};
         snapshot.forEach(child => {
@@ -164,23 +194,19 @@
     function showHostBadge() {
       const badge = document.getElementById("hostBadge");
       if (isHost()) {
-        badge.textContent = "👑 You are the host";
+        badge.textContent = `👑 ${userName} is the host`;
+        document.getElementById("hostControls").style.display = "block";
       } else {
-        badge.textContent = "You have joined the room";
+        badge.textContent = "";
       }
     }
 
     // Initialize
     window.addEventListener("DOMContentLoaded", () => {
-      if (isHost()) {
-        document.getElementById("hostControls").style.display = "block";
-      }
-      showHostBadge();
-    });
-
-    firebase.database().ref("users").on("value", snapshot => {
-      const users = snapshot.val() || {};
-      renderUserList(users);
+      firebase.database().ref("users").on("value", snapshot => {
+        const users = snapshot.val() || {};
+        renderUserList(users);
+      });
     });
   </script>
 </body>
