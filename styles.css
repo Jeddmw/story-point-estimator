@@ -1,0 +1,86 @@
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  padding: 30px;
+}
+
+input, button {
+  font-size: 16px;
+  padding: 8px;
+  margin: 5px;
+}
+
+.button-group button {
+  margin: 4px;
+  padding: 10px 15px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button.selected {
+  background-color: #4caf50;
+  color: white;
+  font-weight: bold;
+  border: 2px solid #2e7d32;
+}
+
+button.disabled {
+  background-color: #e0e0e0 !important;
+  color: #aaa !important;
+  border: 1px solid #ccc !important;
+  cursor: not-allowed;
+}
+
+.result {
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 30px;
+}
+
+.host-controls {
+  margin-top: 20px;
+  display: none;
+}
+
+.user-list {
+  margin-top: 30px;
+  font-size: 16px;
+  text-align: left;
+  display: inline-block;
+}
+
+.user-list ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.user-list li {
+  padding: 4px 0;
+}
+
+#hostBadge {
+  margin-top: 8px;
+  font-weight: bold;
+  color: darkgreen;
+}
+
+#nameModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#nameModalContent {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  text-align: center;
+  width: 300px;
+}
