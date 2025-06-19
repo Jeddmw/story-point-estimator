@@ -1,4 +1,3 @@
-// app.js
 import { db } from './firebase.js';
 
 let userName = "";
@@ -95,10 +94,12 @@ function isHost() {
 
 function showHostBadge() {
   const badge = document.getElementById("hostBadge");
-  badge.textContent = isHost()
-    ? `${userName} is the host`
-    : `You are logged in as: ${userName}`;
-  if (isHost()) document.getElementById("hostControls").style.display = "block";
+  if (isHost()) {
+    badge.innerHTML = `<strong>Host</strong><br/>You are logged in as: ${userName}`;
+    document.getElementById("hostControls").style.display = "block";
+  } else {
+    badge.textContent = `You are logged in as: ${userName}`;
+  }
 }
 
 db.ref("results").on("value", snapshot => {

@@ -1,4 +1,3 @@
-// firebase.js
 const firebaseConfig = {
   apiKey: "AIzaSyC34kR1KqtpFh13pqyVJMUVDbPnkYh27lw",
   authDomain: "team-estimator.firebaseapp.com",
