@@ -105,13 +105,21 @@ function showHostBadge() {
 db.ref("results").on("value", snapshot => {
   const data = snapshot.val();
   const display = document.getElementById("resultDisplay");
+
   if (!data) {
     display.textContent = "";
     showVotes = false;
     return;
   }
+
   display.textContent = `Average Estimate: ${data.average} (from ${Object.keys(data.votes).length} votes)`;
   showVotes = true;
+
+  // All users should re-render to show who voted what
+  db.ref("users").once("value").then(snapshot => {
+    const users = snapshot.val() || {};
+    renderUserList(users);
+  });
 });
 
 db.ref("meta/resetCounter").on("value", () => {
