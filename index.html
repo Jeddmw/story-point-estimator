@@ -52,9 +52,6 @@
       font-weight: bold;
       color: darkgreen;
     }
-    #voteSummary {
-      margin-top: 20px;
-    }
     #nameModal {
       position: fixed;
       top: 0;
@@ -92,17 +89,16 @@
   <div id="hostBadge"></div>
 
   <div class="button-group">
-    <button onclick="submitVote(1)">1</button>
-    <button onclick="submitVote(2)">2</button>
-    <button onclick="submitVote(4)">4</button>
-    <button onclick="submitVote(8)">8</button>
-    <button onclick="submitVote(16)">16</button>
-    <button onclick="submitVote(32)">32</button>
-    <button onclick="submitVote(64)">64</button>
+    <button data-value="1" onclick="submitVote(1)">1</button>
+    <button data-value="2" onclick="submitVote(2)">2</button>
+    <button data-value="4" onclick="submitVote(4)">4</button>
+    <button data-value="8" onclick="submitVote(8)">8</button>
+    <button data-value="16" onclick="submitVote(16)">16</button>
+    <button data-value="32" onclick="submitVote(32)">32</button>
+    <button data-value="64" onclick="submitVote(64)">64</button>
   </div>
 
   <div class="result" id="resultDisplay"></div>
-  <div id="voteSummary"></div>
 
   <div class="host-controls" id="hostControls">
     <button onclick="estimate()">Estimate</button>
@@ -116,13 +112,13 @@
 
   <script>
     const firebaseConfig = {
-        apiKey: "AIzaSyC34kR1KqtpFh13pqyVJMUVDbPnkYh27lw",
-        authDomain: "team-estimator.firebaseapp.com",
-        projectId: "team-estimator",
-        storageBucket: "team-estimator.firebasestorage.app",
-        messagingSenderId: "371255139544",
-        appId: "1:371255139544:web:54280b68296ae341288bad",
-        measurementId: "G-6W7STHM4NG"
+      apiKey: "AIzaSyC34kR1KqtpFh13pqyVJMUVDbPnkYh27lw",
+      authDomain: "team-estimator.firebaseapp.com",
+      projectId: "team-estimator",
+      storageBucket: "team-estimator.firebasestorage.app",
+      messagingSenderId: "371255139544",
+      appId: "1:371255139544:web:54280b68296ae341288bad",
+      measurementId: "G-6W7STHM4NG"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -130,7 +126,7 @@
 
     let userName = "";
     let showVotes = false;
-
+    let myVote = null;
 
     function submitName() {
       const input = document.getElementById("usernameInput");
@@ -155,10 +151,12 @@
         return;
       }
 
+      myVote = value;
+
       const allButtons = document.querySelectorAll(".button-group button");
       allButtons.forEach(btn => {
         btn.classList.remove("selected");
-        if (parseInt(btn.textContent) === value) {
+        if (parseInt(btn.dataset.value) === value) {
           btn.classList.add("selected");
         }
       });
@@ -181,8 +179,8 @@
           votes: data
         });
 
-        // Enable vote visibility in the user list
         showVotes = true;
+
         firebase.database().ref("users").once("value", snapshot => {
           const users = snapshot.val() || {};
           renderUserList(users);
@@ -193,13 +191,10 @@
     function reset() {
       firebase.database().ref("votes").remove();
       firebase.database().ref("results").remove();
+      firebase.database().ref("meta/resetCounter").transaction(current => (current || 0) + 1);
 
+      unhighlightSelectedVote();
       document.getElementById("resultDisplay").textContent = "";
-      document.getElementById("voteSummary").innerHTML = "";
-
-      const allButtons = document.querySelectorAll(".button-group button");
-      allButtons.forEach(btn => btn.classList.remove("selected"));
-
       showVotes = false;
 
       firebase.database().ref("users").once("value", snapshot => {
@@ -211,16 +206,25 @@
       });
     }
 
+    function unhighlightSelectedVote() {
+      const buttons = document.querySelectorAll(".button-group button");
+      buttons.forEach(btn => btn.classList.remove("selected"));
+    }
+
     function renderUserList(users) {
       const userListEl = document.getElementById("userList");
       userListEl.innerHTML = "";
 
       firebase.database().ref("votes").once("value", voteSnap => {
         const voteData = voteSnap.val() || {};
+        const seen = new Set();
 
         for (const [name, data] of Object.entries(users)) {
+          if (seen.has(name)) continue;
+          seen.add(name);
+
           const voted = data.voted ? "✅" : "";
-          const vote = voteData[name] !== undefined ? `→ ${voteData[name]}` : "";
+          const vote = (showVotes && voteData[name] !== undefined) ? `→ ${voteData[name]}` : "";
           const li = document.createElement("li");
           li.textContent = `${name} ${voted} ${vote}`;
           userListEl.appendChild(li);
@@ -235,34 +239,50 @@
 
     function showHostBadge() {
       const badge = document.getElementById("hostBadge");
+      badge.textContent = `${userName} is the host`;
       if (isHost()) {
-        badge.textContent = `${userName} is the host`;
         document.getElementById("hostControls").style.display = "block";
-      } else {
-        badge.textContent = `You are logged in as: ${userName}`;
       }
     }
 
-    // Live listener: everyone sees the results when estimated
     firebase.database().ref("results").on("value", snapshot => {
       const data = snapshot.val();
       const resultDisplay = document.getElementById("resultDisplay");
-      const voteSummary = document.getElementById("voteSummary");
 
       if (!data) {
         resultDisplay.textContent = "";
-        voteSummary.innerHTML = "";
+        showVotes = false;
         return;
       }
 
       resultDisplay.textContent = `Average Estimate: ${data.average} (from ${Object.keys(data.votes).length} votes)`;
 
-      let summaryHTML = "<h3>Individual Votes:</h3><ul>";
-      for (const [name, vote] of Object.entries(data.votes)) {
-        summaryHTML += `<li><strong>${name}</strong>: ${vote}</li>`;
+      showVotes = true;
+
+      if (!isHost()) {
+        firebase.database().ref("users").once("value", snapshot => {
+          const users = snapshot.val() || {};
+          renderUserList(users);
+        });
       }
-      summaryHTML += "</ul>";
-      voteSummary.innerHTML = summaryHTML;
+    });
+
+    firebase.database().ref("meta/resetCounter").on("value", () => {
+      if (!userName) return;
+
+      showVotes = false;
+      myVote = null;
+
+      unhighlightSelectedVote();
+      document.getElementById("resultDisplay").textContent = "";
+
+      firebase.database().ref("votes/" + userName).remove();
+      firebase.database().ref("users/" + userName).update({ voted: false }).then(() => {
+        firebase.database().ref("users").once("value", snapshot => {
+          const users = snapshot.val() || {};
+          renderUserList(users);
+        });
+      });
     });
 
     window.addEventListener("DOMContentLoaded", () => {
