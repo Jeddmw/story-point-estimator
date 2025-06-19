@@ -52,7 +52,9 @@
       font-weight: bold;
       color: darkgreen;
     }
-    /* Modal styles */
+    #voteSummary {
+      margin-top: 20px;
+    }
     #nameModal {
       position: fixed;
       top: 0;
@@ -100,6 +102,7 @@
   </div>
 
   <div class="result" id="resultDisplay"></div>
+  <div id="voteSummary"></div>
 
   <div class="host-controls" id="hostControls">
     <button onclick="estimate()">Estimate</button>
@@ -148,46 +151,47 @@
       if (!userName) {
         alert("Please enter your name first.");
         return;
-    }
-
-  // Highlight the selected button
-  const allButtons = document.querySelectorAll(".button-group button");
-    allButtons.forEach(btn => {
-      btn.classList.remove("selected");
-      if (parseInt(btn.textContent) === value) {
-        btn.classList.add("selected");
       }
-    });
 
-    // Save vote to Firebase
-    firebase.database().ref("votes/" + userName).set(value);
-    firebase.database().ref("users/" + userName).set({ voted: true });
-  }
+      const allButtons = document.querySelectorAll(".button-group button");
+      allButtons.forEach(btn => {
+        btn.classList.remove("selected");
+        if (parseInt(btn.textContent) === value) {
+          btn.classList.add("selected");
+        }
+      });
+
+      firebase.database().ref("votes/" + userName).set(value);
+      firebase.database().ref("users/" + userName).set({ voted: true });
+    }
 
     function estimate() {
       firebase.database().ref("votes").once("value", snapshot => {
         const data = snapshot.val();
-        if (!data) {
-          document.getElementById("resultDisplay").textContent = "No votes to estimate.";
-          return;
-        }
+        if (!data) return;
+
         const values = Object.values(data);
         const sum = values.reduce((a, b) => a + b, 0);
         const avg = sum / values.length;
-        document.getElementById("resultDisplay").textContent =
-          `Average Estimate: ${avg.toFixed(2)} (from ${values.length} votes)`;
+
+        // Write result to /results so everyone sees it
+        firebase.database().ref("results").set({
+          average: avg.toFixed(2),
+          votes: data
+        });
       });
     }
 
     function reset() {
       firebase.database().ref("votes").remove();
-      document.getElementById("resultDisplay").textContent = "";
+      firebase.database().ref("results").remove();
 
-      // Unhighlight all vote buttons
+      document.getElementById("resultDisplay").textContent = "";
+      document.getElementById("voteSummary").innerHTML = "";
+
       const allButtons = document.querySelectorAll(".button-group button");
       allButtons.forEach(btn => btn.classList.remove("selected"));
 
-      // Reset "voted" status in Firebase
       firebase.database().ref("users").once("value", snapshot => {
         const updates = {};
         snapshot.forEach(child => {
@@ -223,7 +227,28 @@
       }
     }
 
-    // Initialize
+    // Live listener: everyone sees the results when estimated
+    firebase.database().ref("results").on("value", snapshot => {
+      const data = snapshot.val();
+      const resultDisplay = document.getElementById("resultDisplay");
+      const voteSummary = document.getElementById("voteSummary");
+
+      if (!data) {
+        resultDisplay.textContent = "";
+        voteSummary.innerHTML = "";
+        return;
+      }
+
+      resultDisplay.textContent = `Average Estimate: ${data.average} (from ${Object.keys(data.votes).length} votes)`;
+
+      let summaryHTML = "<h3>Individual Votes:</h3><ul>";
+      for (const [name, vote] of Object.entries(data.votes)) {
+        summaryHTML += `<li><strong>${name}</strong>: ${vote}</li>`;
+      }
+      summaryHTML += "</ul>";
+      voteSummary.innerHTML = summaryHTML;
+    });
+
     window.addEventListener("DOMContentLoaded", () => {
       firebase.database().ref("users").on("value", snapshot => {
         const users = snapshot.val() || {};
