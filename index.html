@@ -204,12 +204,18 @@
     function renderUserList(users) {
       const userListEl = document.getElementById("userList");
       userListEl.innerHTML = "";
-      for (const [name, data] of Object.entries(users)) {
-        const li = document.createElement("li");
-        const status = data.voted ? "✅" : "";
-        li.textContent = `${name} ${status}`;
-        userListEl.appendChild(li);
-      }
+
+      firebase.database().ref("votes").once("value", voteSnap => {
+        const voteData = voteSnap.val() || {};
+
+        for (const [name, data] of Object.entries(users)) {
+          const voted = data.voted ? "✅" : "";
+          const vote = voteData[name] !== undefined ? `→ ${voteData[name]}` : "";
+          const li = document.createElement("li");
+          li.textContent = `${name} ${voted} ${vote}`;
+          userListEl.appendChild(li);
+        }
+      });
     }
 
     function isHost() {
