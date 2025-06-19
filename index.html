@@ -18,12 +18,19 @@
       margin: 4px;
       padding: 10px 15px;
       font-size: 16px;
+      cursor: pointer;
     }
     button.selected {
       background-color: #4caf50;
       color: white;
       font-weight: bold;
       border: 2px solid #2e7d32;
+    }
+    button.disabled {
+      background-color: #e0e0e0 !important;
+      color: #aaa !important;
+      border: 1px solid #ccc !important;
+      cursor: not-allowed;
     }
     .result {
       font-size: 20px;
@@ -127,6 +134,19 @@
     let userName = "";
     let showVotes = false;
     let myVote = null;
+    let votingEnabled = true;
+
+    function setVotingEnabled(enabled) {
+      votingEnabled = enabled;
+      const buttons = document.querySelectorAll(".button-group button");
+      buttons.forEach(btn => {
+        if (enabled) {
+          btn.classList.remove("disabled");
+        } else {
+          btn.classList.add("disabled");
+        }
+      });
+    }
 
     function submitName() {
       const input = document.getElementById("usernameInput");
@@ -146,6 +166,8 @@
     }
 
     function submitVote(value) {
+      if (!votingEnabled) return;
+
       if (!userName) {
         alert("Please enter your name first.");
         return;
@@ -180,7 +202,7 @@
         });
 
         showVotes = true;
-
+        firebase.database().ref("meta/votingEnabled").set(false);
         firebase.database().ref("users").once("value", snapshot => {
           const users = snapshot.val() || {};
           renderUserList(users);
@@ -192,10 +214,12 @@
       firebase.database().ref("votes").remove();
       firebase.database().ref("results").remove();
       firebase.database().ref("meta/resetCounter").transaction(current => (current || 0) + 1);
+      firebase.database().ref("meta/votingEnabled").set(true);
 
       unhighlightSelectedVote();
       document.getElementById("resultDisplay").textContent = "";
       showVotes = false;
+      setVotingEnabled(true);
 
       firebase.database().ref("users").once("value", snapshot => {
         const updates = {};
@@ -241,7 +265,10 @@
       const badge = document.getElementById("hostBadge");
       badge.textContent = `${userName} is the host`;
       if (isHost()) {
+        badge.textContent = `${userName} is the host`;
         document.getElementById("hostControls").style.display = "block";
+      } else {
+        badge.textContent = `You are logged in as: ${userName}`;
       }
     }
 
@@ -271,6 +298,8 @@
       if (!userName) return;
 
       showVotes = false;
+      votingEnabled = true;
+      setVotingEnabled(true);
       myVote = null;
 
       unhighlightSelectedVote();
@@ -283,6 +312,11 @@
           renderUserList(users);
         });
       });
+    });
+
+    firebase.database().ref("meta/votingEnabled").on("value", snapshot => {
+      const enabled = snapshot.val();
+      setVotingEnabled(enabled !== false); // Default to true if null
     });
 
     window.addEventListener("DOMContentLoaded", () => {
