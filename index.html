@@ -129,6 +129,8 @@
     const db = firebase.database();
 
     let userName = "";
+    let showVotes = false;
+
 
     function submitName() {
       const input = document.getElementById("usernameInput");
@@ -174,10 +176,16 @@
         const sum = values.reduce((a, b) => a + b, 0);
         const avg = sum / values.length;
 
-        // Write result to /results so everyone sees it
         firebase.database().ref("results").set({
           average: avg.toFixed(2),
           votes: data
+        });
+
+        // Enable vote visibility in the user list
+        showVotes = true;
+        firebase.database().ref("users").once("value", snapshot => {
+          const users = snapshot.val() || {};
+          renderUserList(users);
         });
       });
     }
@@ -191,6 +199,8 @@
 
       const allButtons = document.querySelectorAll(".button-group button");
       allButtons.forEach(btn => btn.classList.remove("selected"));
+
+      showVotes = false;
 
       firebase.database().ref("users").once("value", snapshot => {
         const updates = {};
